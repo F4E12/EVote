@@ -1,12 +1,12 @@
-"use client";
-
+// components/ManageRooms.tsx
 import React, { useEffect, useState } from "react";
-import { db, firestore } from "@/firebase/firebase";
+import { firestore } from "@/firebase/firebase";
 import { collection, getDocs, doc, deleteDoc } from "firebase/firestore";
 import LoadingSpinner from "./loadingSpinner";
-import { Button } from "./button";
 import AddCandidateForm from "./addCandidateForm";
 import VotingResults from "./votingResult";
+import { Button } from "./button";
+import AllowedEmailsUploader from "./allowEmailsUploader";
 
 interface Room {
   id: string;
@@ -75,6 +75,8 @@ const ManageRooms: React.FC = () => {
                 <div className="flex space-x-2">
                   <AddCandidateForm roomId={room.id} />
                   <VotingResults roomId={room.id} />
+                  <AllowedEmailsUploader roomId={room.id} />{" "}
+                  {/* New component */}
                   <Button
                     onClick={() => handleDeleteRoom(room.id)}
                     className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"

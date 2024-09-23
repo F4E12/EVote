@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { firestore, auth } from "@/firebase/firebase";
 import {
   collection,
@@ -18,6 +18,7 @@ import LogoutButton from "@/components/ui/logout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import withGuest from "../hooks/withGuest";
+import VotingResults from "@/components/ui/votingResult";
 
 interface Candidate {
   id: string;
@@ -38,7 +39,12 @@ const VotePage: React.FC = () => {
   // Function to join a room by code
   const joinRoom = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!roomCode.trim()) {
+
+    // Sanitize input
+    const sanitizedRoomCode = roomCode.trim();
+    console.log(`Attempting to join room with code: ${sanitizedRoomCode}`);
+
+    if (!sanitizedRoomCode) {
       alert("Please enter a room code.");
       return;
     }
@@ -46,8 +52,10 @@ const VotePage: React.FC = () => {
     setLoading(true);
     try {
       const roomsRef = collection(firestore, "rooms");
-      const q = query(roomsRef, where("code", "==", roomCode));
+      const q = query(roomsRef, where("code", "==", sanitizedRoomCode));
       const querySnapshot = await getDocs(q);
+
+      console.log(`Number of rooms found: ${querySnapshot.size}`);
 
       if (querySnapshot.empty) {
         alert("Invalid Room Code. Please try again.");
@@ -56,29 +64,48 @@ const VotePage: React.FC = () => {
       }
 
       const roomDoc = querySnapshot.docs[0];
+      console.log(`Room found: ${roomDoc.id}, Name: ${roomDoc.data().name}`);
+
       const fetchedRoomId = roomDoc.id;
       const fetchedRoomName = roomDoc.data().name;
       setRoomId(fetchedRoomId);
       setRoomName(fetchedRoomName);
       setRoomCode("");
 
-      // Fetch candidates
-      const candidatesRef = collection(
-        firestore,
-        "rooms",
-        fetchedRoomId,
-        "candidates"
-      );
-      const candidatesSnapshot = await getDocs(candidatesRef);
-      const candidatesList = candidatesSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Candidate, "id">),
-      }));
-      setCandidates(candidatesList);
+      // Fetch allowedEmails
+      const allowedEmails: string[] = roomDoc.data().allowedEmails || [];
+      console.log(`Allowed Emails: ${allowedEmails}`);
 
-      // Check if user has already voted
+      // Get current user's email
       const user = auth.currentUser;
       if (user) {
+        const userEmail = user.email?.toLowerCase() || "";
+        console.log(`User Email: ${userEmail}`);
+
+        // Check if user's email is in allowedEmails
+        if (!allowedEmails.includes(userEmail)) {
+          setRoomId("");
+          alert("You are not eligible to join this room.");
+          setLoading(false);
+          return;
+        }
+
+        // Fetch candidates
+        const candidatesRef = collection(
+          firestore,
+          "rooms",
+          fetchedRoomId,
+          "candidates"
+        );
+        const candidatesSnapshot = await getDocs(candidatesRef);
+        const candidatesList = candidatesSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...(doc.data() as Omit<Candidate, "id">),
+        }));
+        setCandidates(candidatesList);
+        console.log(`Candidates fetched: ${candidatesList.length}`);
+
+        // Check if user has already voted
         const voteDocRef = doc(
           firestore,
           "rooms",
@@ -89,7 +116,11 @@ const VotePage: React.FC = () => {
         const voteDoc = await getDoc(voteDocRef);
         if (voteDoc.exists()) {
           setHasVoted(true);
+          console.log(`User ${user.uid} has already voted.`);
         }
+      } else {
+        alert("You need to be logged in to join a room.");
+        router.push("/login");
       }
     } catch (error: any) {
       console.error("Error joining room:", error);
@@ -135,6 +166,7 @@ const VotePage: React.FC = () => {
 
       setHasVoted(true);
       alert("Your vote has been recorded!");
+      console.log(`User ${user.uid} voted for candidate ${candidateId}`);
     } catch (error: any) {
       console.error("Error voting:", error);
       alert("Failed to cast your vote. Please try again.");
@@ -143,7 +175,7 @@ const VotePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 text-black">
+    <div className="min-h-screen bg-gray-100">
       <header className="flex justify-end p-4 bg-gray-200">
         <LogoutButton />
       </header>
@@ -175,9 +207,12 @@ const VotePage: React.FC = () => {
             <div className="mb-4 text-center">
               <h2 className="mb-2 text-2xl font-bold">Room: {roomName}</h2>
               {hasVoted ? (
-                <p className="text-green-500">
-                  You have already voted in this room.
-                </p>
+                <div className="">
+                  <p className="text-green-500">
+                    You have already voted in this room.
+                  </p>
+                  <VotingResults roomId={roomId} />
+                </div>
               ) : (
                 <p className="mb-4">
                   Please select your preferred leader below.
@@ -198,9 +233,9 @@ const VotePage: React.FC = () => {
                     <span>{candidate.name}</span>
                     <Button
                       onClick={() => handleVote(candidate.id)}
-                      disabled={voting}
+                      disabled={voting || loading}
                     >
-                      {voting ? "Voting..." : "Vote"}
+                      {voting || loading ? "..." : "Vote"}
                     </Button>
                   </li>
                 ))}

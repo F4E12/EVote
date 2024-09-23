@@ -1,4 +1,5 @@
-// pages/admin.tsx
+"use client";
+
 import CreateRoomForm from "@/components/ui/createRoomForm";
 import LogoutButton from "@/components/ui/logout";
 import ManageRooms from "@/components/ui/manageRooms";

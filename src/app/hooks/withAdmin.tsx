@@ -1,7 +1,6 @@
-// src/hoc/withAdmin.tsx
-"use client"; // Ensure it's a client component
+"use client";
 
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { auth, db, firestore } from "@/firebase/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
