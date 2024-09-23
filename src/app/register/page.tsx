@@ -1,11 +1,13 @@
-// pages/register.tsx
+"use client";
+
 import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-import { useRouter } from "next/router";
-import Button from "../components/Button"; // shadcn Button
-import Input from "../components/Input"; // shadcn Input
-import { auth, database } from "@/firebase/firebase";
+import { auth, db, firestore } from "@/firebase/firebase";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import withLogin from "../hooks/withLogin";
+import { useRouter } from "next/navigation";
 
 const Register = () => {
   const [nik, setNik] = useState("");
@@ -26,21 +28,21 @@ const Register = () => {
       const user = userCredential.user;
 
       // Save additional user info to Firestore
-      await setDoc(doc(database, "users", user.uid), {
+      await setDoc(doc(firestore, "users", user.uid), {
         nik,
         name,
         address,
       });
 
       router.push("/login");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error registering:", error);
       alert(error.message);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 text-black">
       <form
         onSubmit={handleRegister}
         className="p-6 bg-white rounded shadow-md w-full max-w-md"
@@ -105,4 +107,4 @@ const Register = () => {
   );
 };
 
-export default Register;
+export default withLogin(Register);
