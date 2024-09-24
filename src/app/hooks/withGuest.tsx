@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { auth } from "@/firebase/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
+import LoadingSpinner from "@/components/ui/loadingSpinner";
 
 const withGuest = (WrappedComponent: React.FC) => {
   const ComponentWithGuest = (props: any) => {
@@ -24,7 +25,7 @@ const withGuest = (WrappedComponent: React.FC) => {
     }, [router]);
 
     if (loading) {
-      return <div>Loading...</div>;
+      return <LoadingSpinner />;
     }
 
     if (!user) {
