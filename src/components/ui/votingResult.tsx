@@ -1,7 +1,7 @@
 // components/VotingResults.tsx
 import React, { useEffect, useState } from "react";
-import { db, firestore } from "@/firebase/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { db, firestore } from "@/firebase/firebase"; // Ensure this is your Firestore instance
+import { collection, onSnapshot } from "firebase/firestore"; // Import onSnapshot
 import LoadingSpinner from "./loadingSpinner";
 
 interface Candidate {
@@ -19,29 +19,32 @@ const VotingResults: React.FC<VotingResultsProps> = ({ roomId }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchResults = async () => {
-      try {
-        const candidatesCol = collection(
-          firestore,
-          "rooms",
-          roomId,
-          "candidates"
-        );
-        const candidatesSnapshot = await getDocs(candidatesCol);
-        const candidatesList = candidatesSnapshot.docs.map((doc) => ({
+    setLoading(true);
+
+    // Reference to the candidates subcollection
+    const candidatesCol = collection(firestore, "rooms", roomId, "candidates");
+
+    // Set up the onSnapshot listener
+    const unsubscribe = onSnapshot(
+      candidatesCol,
+      (snapshot) => {
+        const candidatesList: Candidate[] = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...(doc.data() as Omit<Candidate, "id">),
         }));
         setCandidates(candidatesList);
-      } catch (error: any) {
+        setLoading(false);
+      },
+      (error) => {
         console.error("Error fetching voting results:", error);
         alert("Failed to fetch voting results.");
+        setLoading(false);
       }
-      setLoading(false);
-    };
+    );
 
-    fetchResults();
-  }, [roomId]);
+    // Cleanup function to unsubscribe from the listener
+    return () => unsubscribe();
+  }, [roomId, db]);
 
   if (loading) {
     return <LoadingSpinner />;
